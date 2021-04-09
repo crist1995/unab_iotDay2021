@@ -9,6 +9,9 @@
 
   This example code is in the public domain.
 */
+#include <Arduino_MKRIoTCarrier.h>
+MKRIoTCarrier carrier;
+bool CARRIER_CASE = false;
 
 #include <ArduinoMqttClient.h>
 #if defined(ARDUINO_SAMD_MKRWIFI1010) || defined(ARDUINO_SAMD_NANO_33_IOT) || defined(ARDUINO_AVR_UNO_WIFI_REV2)
@@ -18,7 +21,7 @@
 #elif defined(ARDUINO_ESP8266_ESP12)
   #include <ESP8266WiFi.h>
 #endif
-
+#include <ArduinoJson.h>
 #include "arduino_secrets.h"
 ///////please enter your sensitive data in the Secret tab/arduino_secrets.h
 char ssid[] = SECRET_SSID;        // your network SSID (name)
@@ -33,21 +36,15 @@ char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as k
 WiFiClient wifiClient;
 MqttClient mqttClient(wifiClient);
 
-const char broker[] = "test.mosquitto.org";
+const char broker[] = "your.mqtt.broker.server";
 int        port     = 1883;
 const char topic[]  = "arduino/simple";
-
 const long interval = 1000;
-unsigned long previousMillis = 0;
 
-int count = 0;
 
 void setup() {
   //Initialize serial and wait for port to open:
   Serial.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
 
   // attempt to connect to Wifi network:
   Serial.print("Attempting to connect to WPA SSID: ");
@@ -57,9 +54,10 @@ void setup() {
     Serial.print(".");
     delay(5000);
   }
-
+  
   Serial.println("You're connected to the network");
   Serial.println();
+  
 
   // You can provide a unique client ID, if not set the library uses Arduino-millis()
   // Each client must have a unique client ID
@@ -80,34 +78,39 @@ void setup() {
 
   Serial.println("You're connected to the MQTT broker!");
   Serial.println();
+  if (!carrier.begin()) {
+  Serial.println("Error in sensors initialization!");
+  while (1);
+  }
+  Serial.println("Touch initialization Done!");
+
 }
 
 void loop() {
   // call poll() regularly to allow the library to send MQTT keep alives which
   // avoids being disconnected by the broker
+  int button=0;
   mqttClient.poll();
-
-  // avoid having delays in loop, we'll use the strategy from BlinkWithoutDelay
-  // see: File -> Examples -> 02.Digital -> BlinkWithoutDelay for more info
-  unsigned long currentMillis = millis();
+  carrier.Buttons.update();
   
-  if (currentMillis - previousMillis >= interval) {
-    // save the last time a message was sent
-    previousMillis = currentMillis;
-
+  if (carrier.Button1.onTouchDown()) {
+    Serial.println("Touched Down Button 1");
+    button=1;
+  }
+  if (carrier.Button2.onTouchDown()) {
+    Serial.println("Touched Down Button 2");
+    button=2;
+  }
+  if(button!=0){
+  StaticJsonDocument<200> doc;
+    doc["valor"] = button;
     Serial.print("Sending message to topic: ");
     Serial.println(topic);
-    Serial.print("hello ");
-    Serial.println(count);
-
+    serializeJson(doc, Serial);
     // send message, the Print interface can be used to set the message contents
     mqttClient.beginMessage(topic);
-    mqttClient.print("hello ");
-    mqttClient.print(count);
+    serializeJson(doc, mqttClient);
     mqttClient.endMessage();
-
-    Serial.println();
-
-    count++;
+    delay(1000);
   }
 }
