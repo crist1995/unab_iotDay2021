@@ -9,10 +9,7 @@
 
   This example code is in the public domain.
 */
-#include <Arduino_MKRIoTCarrier.h>
-MKRIoTCarrier carrier;
-bool CARRIER_CASE = false;
-
+#include <ArduinoJson.h>
 #include <ArduinoMqttClient.h>
 #if defined(ARDUINO_SAMD_MKRWIFI1010) || defined(ARDUINO_SAMD_NANO_33_IOT) || defined(ARDUINO_AVR_UNO_WIFI_REV2)
   #include <WiFiNINA.h>
@@ -21,7 +18,10 @@ bool CARRIER_CASE = false;
 #elif defined(ARDUINO_ESP8266_ESP12)
   #include <ESP8266WiFi.h>
 #endif
-#include <ArduinoJson.h>
+#include <Arduino_MKRIoTCarrier.h>
+MKRIoTCarrier carrier;
+bool CARRIER_CASE = false;
+
 #include "arduino_secrets.h"
 ///////please enter your sensitive data in the Secret tab/arduino_secrets.h
 char ssid[] = SECRET_SSID;        // your network SSID (name)
@@ -36,11 +36,11 @@ char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as k
 WiFiClient wifiClient;
 MqttClient mqttClient(wifiClient);
 
-const char broker[] = "your.mqtt.broker.server";
+const char broker[] = "your.mqtt.broker.ip";
 int        port     = 1883;
-const char topic[]  = "arduino/simple";
-const long interval = 1000;
+const char topic[]  = "arduino/bottons";
 
+const long interval = 1000;
 
 void setup() {
   //Initialize serial and wait for port to open:
@@ -54,10 +54,9 @@ void setup() {
     Serial.print(".");
     delay(5000);
   }
-  
+
   Serial.println("You're connected to the network");
   Serial.println();
-  
 
   // You can provide a unique client ID, if not set the library uses Arduino-millis()
   // Each client must have a unique client ID
@@ -78,21 +77,18 @@ void setup() {
 
   Serial.println("You're connected to the MQTT broker!");
   Serial.println();
-  if (!carrier.begin()) {
-  Serial.println("Error in sensors initialization!");
-  while (1);
+    if (!carrier.begin()) {
+    Serial.println("Error in sensors initialization!");
+    while (1);
   }
-  Serial.println("Touch initialization Done!");
-
 }
 
 void loop() {
   // call poll() regularly to allow the library to send MQTT keep alives which
   // avoids being disconnected by the broker
-  int button=0;
   mqttClient.poll();
   carrier.Buttons.update();
-  
+  int button=0;
   if (carrier.Button1.onTouchDown()) {
     Serial.println("Touched Down Button 1");
     button=1;
@@ -101,16 +97,20 @@ void loop() {
     Serial.println("Touched Down Button 2");
     button=2;
   }
-  if(button!=0){
-  StaticJsonDocument<200> doc;
-    doc["valor"] = button;
+  // avoid having delays in loop, we'll use the strategy from BlinkWithoutDelay
+  // see: File -> Examples -> 02.Digital -> BlinkWithoutDelay for more info
+ if(button!=0){
+    StaticJsonDocument<200> doc;
+    doc["button"] = button;
+    serializeJson(doc,Serial);
     Serial.print("Sending message to topic: ");
     Serial.println(topic);
-    serializeJson(doc, Serial);
+    Serial.println(button);
+    
     // send message, the Print interface can be used to set the message contents
+    
     mqttClient.beginMessage(topic);
-    serializeJson(doc, mqttClient);
+    serializeJson(doc,mqttClient);
     mqttClient.endMessage();
-    delay(1000);
-  }
+ }
 }
