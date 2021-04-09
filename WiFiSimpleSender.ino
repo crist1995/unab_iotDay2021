@@ -38,7 +38,7 @@ MqttClient mqttClient(wifiClient);
 
 const char broker[] = "your.mqtt.broker.ip";
 int        port     = 1883;
-const char topic[]  = "arduino/bottons";
+const char topic[]  = "arduino/buttons";
 
 const long interval = 1000;
 
