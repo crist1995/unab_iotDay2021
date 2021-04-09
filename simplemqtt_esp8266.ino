@@ -8,7 +8,7 @@
 const char* ssid = "your_wifi_network";
 const char* password = "your_wifi_network_pass";
 const char* mqtt_server = "your.mqtt.broker";
-const char topic[]  = "arduino/bottons";
+const char topic[]  = "arduino/buttons";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
